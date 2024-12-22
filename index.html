@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spotify Music Player</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #player-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 30px;
+    }
+    #player {
+      width: 100%;
+      max-width: 400px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Spotify Music Player</h1>
+  <p>Login to your Spotify account and play music directly in the app!</p>
+  
+  <!-- Button to start authentication with Spotify -->
+  <button onclick="authenticateSpotify()">Login to Spotify</button>
+
+  <!-- Player Container -->
+  <div id="player-container">
+    <div id="player"></div>
+  </div>
+
+  <script>
+    // Replace these with your credentials from the Spotify Developer Dashboard
+    const clientId = '7768647d7ed74e0ba84bc62ed4406fbb';  // Change this to your Spotify app's Client ID
+    const redirectUri = 'https://accounts.spotify.com/en/login';  // Change this to your registered Redirect URI (e.g., 'http://localhost:8000/callback')
+    let accessToken = '';  // This will store the access token after user logs in
+
+    // Step 1: Authenticate with Spotify
+    function authenticateSpotify() {
+      const scopes = 'user-library-read user-read-playback-state user-modify-playback-state';  // Define the permissions your app needs
+      const authUrl = `https://accounts.spotify.com/authorize?response_type=token&client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}`;
+      window.location.href = authUrl;  // Redirect to Spotify login page
+    }
+
+    // Step 2: Handle the Spotify callback and extract the access token
+    function handleSpotifyCallback() {
+      const hash = window.location.hash.substring(1);  // Get the part of the URL after '#'
+      const params = new URLSearchParams(hash);  // Parse the URL parameters
+      accessToken = params.get('access_token');  // Extract the access token from the URL
+      if (accessToken) {
+        initializePlayer(accessToken);  // If token is found, initialize the player
+      }
+    }
+
+    // Step 3: Initialize the Web Playback SDK with the access token
+    function initializePlayer(accessToken) {
+      const script = document.createElement('script');  // Create a new script tag to load the SDK
+      script.src = 'https://sdk.scdn.co/spotify-player.js';  // Load the Web Playback SDK
+      script.onload = () => {  // Once SDK is loaded, initialize the player
+        const player = new Spotify.Player({
+          name: 'My Web Player',  // The name of your player (it will be shown on Spotify)
+          getOAuthToken: cb => { cb(accessToken); },  // Provide the access token to the SDK
+          volume: 0.5,  // Set the initial volume (value between 0 and 1)
+        });
+
+        // Step 4: Setup the player (event listeners for player readiness and state changes)
+        player.addListener('ready', ({ device_id }) => {
+          console.log('The Web Playback SDK is ready with device ID', device_id);
+          playTrack(device_id);  // Start playing a track once the player is ready
+        });
+
+        player.addListener('player_state_changed', state => {
+          console.log(state);  // Log the player state (track name, progress, etc.)
+        });
+
+        player.connect();  // Connect the player to the Spotify API
+      };
+
+      document.body.appendChild(script);  // Append the SDK script to the body of the page
+    }
+
+    // Step 5: Play a track (replace the track URI with the track of your choice)
+    function playTrack(deviceId) {
+      const player = Spotify.Player;
+      player.play({
+        uris: ['spotify:track:2TpxZ7JUBn3uw7mZgG2c3m'],  // Example track URI (replace with your desired track URI)
+      }).then(() => {
+        console.log('Track is playing');
+      }).catch(err => console.log('Error playing track:', err));  // Error handling if track doesn't play
+    }
+
+    // Step 6: Handle the callback URL from Spotify
+    if (window.location.hash) {
+      handleSpotifyCallback();  // If the URL contains a hash, extract the token and initialize the player
+    }
+  </script>
+
+</body>
+</html>
